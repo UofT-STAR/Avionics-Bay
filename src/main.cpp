@@ -219,7 +219,7 @@ void loop() {
           counter++;
         }
 
-        if (counter >= 200) {
+        if (counter >= 20) {
           counter = 0;
           currentState = LAND;
         }
