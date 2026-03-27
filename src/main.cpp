@@ -27,6 +27,8 @@ unsigned long loopTime = 0;     // how fast to run loop (e.g. how fast to read s
 #define logInterval 200         // 200ms = 5 times per second
 #define preLaunchInterval 1000  // 1 second
 
+#define VerticalGThreshold 4.0 // Threshold for vertical acceleration to detect launch (in g's)
+
 void setup() {
   // Open serial communications :
   Serial.begin(115200);                  // Serial only works when bay is connected to computer by USB
@@ -142,9 +144,9 @@ void trigger() {
   Serial.println(F("DEPLOY side"));
   File file = SD.open("DATALOG.TXT", FILE_WRITE);
     if (file){
-      file.println(F("DEPLOY side chute"));
+      file.println(F("DEPLOY side chute,,,"));
       file.close();
-    } 
+    }
 
   while (millis() - triggerStart < 4500) {
     temuReading();
@@ -175,7 +177,7 @@ void loop() {
 
       case PRE_LAUNCH:
         // check if we are in the air
-        if (currAlt > 40 || ( currAlt > 20 and currAccZ > 3 ) || currAccZ > 5 ) {
+        if (currAlt > 40 || ( currAlt > 20 and currAccZ > VerticalGThreshold ) || currAccZ > 5.0 ) {  // this is very subjective, there could be other better conditions
           counter++;
         } else {
           counter = 0;
@@ -188,7 +190,7 @@ void loop() {
 
           File file = SD.open("DATALOG.TXT", FILE_WRITE);
           if (file){
-            file.println(F("LAUNCH!"));
+            file.println(F("PRE_LAUNCH->ASCENT,,,"));
             file.close();
           } 
         }
