@@ -78,6 +78,63 @@ void setup() {
   Serial.println(groundlevel);
 }
 
+void log_data(float currAlt, float currTemp, float currAccZ, int state){
+  File file = SD.open("DATALOG.TXT", FILE_WRITE);
+  if (file){
+    // write stuff into it
+    file.print(F("state: "));
+    file.print(state);
+    file.print(F(" alt: "));
+    file.print(currAlt);
+    file.print(F(" accel: "));
+    file.print(currAccZ);
+    file.print(F(" temp: "));
+    file.println(currTemp); // .println finishes the line
+    file.close();
+  } else{
+    Serial.println(F("Datalog error"));
+  }
+}
+
+void temuReading() {
+    ms5611.read();
+    IMU.readSensor();
+    xyzFloat gValue;
+    IMU.getGValues(&gValue);
+
+    float alt = ms5611.getAltitude() - groundlevel;
+    float temp = ms5611.getTemperature();
+    float accZ = gValue.z;
+    log_data(alt, temp, accZ, currentState); 
+    delay(200); // Small delay so we don't spam the SD card
+}
+
+void trigger() {
+  unsigned long triggerStart = millis();
+
+  digitalWrite(MOSFET_PIN2, HIGH); // FIRE IGNITER 2 (small chute)
+  while (millis()- triggerStart < 1500) {
+    temuReading();
+  }
+  digitalWrite(MOSFET_PIN2, LOW); // stop IGNITER
+  Serial.println("DEPLOY side");
+  File file = SD.open("DATALOG.TXT", FILE_WRITE);
+    if (file){
+      file.println("DEPLOY side chute");
+      file.close();
+    } 
+
+  while (millis() - triggerStart < 4500) {
+    temuReading();
+  }
+  digitalWrite(MOSFET_PIN1, HIGH); // FIRE main chute
+
+  while (millis() - triggerStart < 6000) {
+    temuReading();
+  } 
+  digitalWrite(MOSFET_PIN1, LOW);  // Turn off main chute
+}
+
 void loop() {
   unsigned long currentTime = millis();
   if (currentTime - loopTime >= 50 ) {
@@ -173,61 +230,4 @@ void loop() {
         break;
     }
   }
-}
-
-void log_data(float currAlt, float currTemp, float currAccZ, int state){
-  File file = SD.open("DATALOG.TXT", FILE_WRITE);
-  if (file){
-    // write stuff into it
-    file.print(F("state: "));
-    file.print(state);
-    file.print(F(" alt: "));
-    file.print(currAlt);
-    file.print(F(" accel: "));
-    file.print(currAccZ);
-    file.print(F(" temp: "));
-    file.println(currTemp); // .println finishes the line
-    file.close();
-  } else{
-    Serial.println(F("Datalog error"));
-  }
-}
-
-void trigger() {
-  unsigned long triggerStart = millis();
-
-  digitalWrite(MOSFET_PIN2, HIGH); // FIRE IGNITER 2 (small chute)
-  while (millis()- triggerStart < 1500) {
-    temuReading();
-  }
-  digitalWrite(MOSFET_PIN2, LOW); // stop IGNITER
-  Serial.println("DEPLOY side");
-  File file = SD.open("DATALOG.TXT", FILE_WRITE);
-    if (file){
-      file.println("DEPLOY side chute");
-      file.close();
-    } 
-
-  while (millis() - triggerStart < 4500) {
-    temuReading();
-  }
-  digitalWrite(MOSFET_PIN1, HIGH); // FIRE main chute
-
-  while (millis() - triggerStart < 6000) {
-    temuReading();
-  } 
-  digitalWrite(MOSFET_PIN1, LOW);  // Turn off main chute
-}
-
-void temuReading () {
-    ms5611.read();
-    IMU.readSensor();
-    xyzFloat gValue;
-    IMU.getGValues(&gValue);
-
-    float alt = ms5611.getAltitude() - groundlevel;
-    float temp = ms5611.getTemperature();
-    float accZ = gValue.z;
-    log_data(alt, temp, accZ, currentState); 
-    delay(200); // Small delay so we don't spam the SD card
 }
