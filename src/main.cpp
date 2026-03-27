@@ -1,168 +1,233 @@
-/*
-    SD card attached to SPI bus as follows:
- ** SDO - pin 11 on Arduino Uno/Duemilanove/Diecimila
- ** SDI - pin 12 on Arduino Uno/Duemilanove/Diecimila
- ** CLK - pin 13 on Arduino Uno/Duemilanove/Diecimila
- ** CS - 	Pin 10 used here for consistency
-*/
 // include the SD library:
-#include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
 #include <MS5611.h>
+#include <ICM20948_WE.h>
 
+// set up variables using the SD utility library functions:
+Sd2Card card;
 MS5611 ms5611;
 
+#define ICM_ADDR 0x68
+ICM20948_WE IMU = ICM20948_WE(ICM_ADDR);
+
 #define CHIP_SELECT 10
-#define MOSFET_PIN1 9
-#define MOSFET_PIN2 8
-#define LOG_INTERVAL 200
-#define PRE_LAUNCH_INTERVAL 1000
+#define MOSFET_PIN1 8    // Connect to MOSFET Gate (Pin 1)
+#define MOSFET_PIN2 6    // Connect to MOSFET Gate (Pin 2)
+float maxAlt = 0;
+int counter = 0;
+float groundlevel = 0;
 
-float maxAlt = 0.0f;
-int descent = 0;
-float groundlevel = 0.0f;
-
-enum RocketState { PRE_LAUNCH, ASCENT, DESCENT, LAND };
+enum RocketState {PRE_LAUNCH, ASCENT, DESCENT, LAND};
 RocketState currentState = PRE_LAUNCH;
 
 unsigned long lastLogTime = 0;
-
-// Forward declarations (required in .cpp files)
-void log_data(float currAlt);
-void trigger();
+unsigned long loopTime = 0;
+#define logInterval 200 // 200ms = 5 times per second
+#define preLaunchInterval 1000 // 10 second
 
 void setup() {
-  Serial.begin(9600);
+  // Open serial communications :
+  Serial.begin(115200);
   Wire.begin();
+  Wire.setClock(100000);
 
   pinMode(MOSFET_PIN1, OUTPUT);
   pinMode(MOSFET_PIN2, OUTPUT);
+
   digitalWrite(MOSFET_PIN1, LOW);
   digitalWrite(MOSFET_PIN2, LOW);
 
-  Serial.println("Initializing ms5611");
+  delay(100);
+
+  Serial.println(F("Init ms5611..."));
   if (!ms5611.begin()) {
-    Serial.println("MS5611 not found!");
-    while (1) {}
+    Serial.println(F("MS5611 failed"));
+    //while (1);
   }
 
-  Serial.print("Initializing SD card...");
+  delay(100);
+
+  Serial.print(F("Init SD..."));
   if (!SD.begin(CHIP_SELECT)) {
-    Serial.println("initialization failed!");
-    while (1) {}
+    Serial.println("sd failed");
+    //while (1); // Halt if card fails
   }
-  Serial.println("SD init OK");
 
-  float sum = 0.0f;
-  for (int i = 0; i < 10; i++) {
+  delay(100);
+
+  Serial.print(F("Init ICM..."));
+  
+  if (!IMU.init()) {
+      Serial.println(F("ICM failed"));
+      // while(1); // Uncomment this for actual flight!
+  } else {
+      Serial.println(F("ICM OK"));
+  }
+
+  //set up ground level
+  for(int i = 0; i < 20; i++) {
     ms5611.read();
-    sum += ms5611.getAltitude();
+    groundlevel += ms5611.getAltitude();
     delay(50);
   }
-  groundlevel = sum / 10.0f;
-
-  Serial.print("Ground Level set to: ");
+  groundlevel = groundlevel / 20.0;
+  
+  Serial.print("Ground Level: ");
   Serial.println(groundlevel);
 }
 
 void loop() {
-  ms5611.read();
-  float currAlt = ms5611.getAltitude() - groundlevel;
   unsigned long currentTime = millis();
+  if (currentTime - loopTime >= 50 ) {
+    loopTime = currentTime;
 
-  switch (currentState) {
-    case PRE_LAUNCH:
-      Serial.print("not launched, altitude: ");
-      Serial.println(currAlt);
+    ms5611.read();
+    float currTemp = ms5611.getTemperature();
+    float currAlt = ms5611.getAltitude() - groundlevel;
 
-      if (currAlt > 10.0f) {
-        currentState = ASCENT;
-        Serial.println("LAUNCH DETECTED");
+    IMU.readSensor();
+    xyzFloat gValue;
+    IMU.getGValues(&gValue);
+    float currAccZ = gValue.z;
 
-        File file = SD.open("DATALOG.TXT", FILE_WRITE);
-        if (file) {
-          file.println("LAUNCH DETECTED");
-          file.close();
+    switch (currentState) {
+
+      case PRE_LAUNCH:
+        // check if we are in the air
+        if (currAlt > 40 || ( currAlt > 20 and currAccZ > 3 ) || currAccZ > 5 ) {
+          counter++;
+        } else {
+          counter = 0;
         }
-      }
 
-      // Fixed macro name
-      if (currentTime - lastLogTime >= PRE_LAUNCH_INTERVAL) {
-        lastLogTime = currentTime;
-        Serial.print("GROUND ");
-        log_data(currAlt);
-      }
-      break;
+        if (counter >= 10) { 
+          counter = 0;
+          currentState = ASCENT;
+          Serial.println("LAUNCHED");
 
-    case ASCENT:
-      if (currAlt > maxAlt) {
-        maxAlt = currAlt;
-        descent = 0;
-      }
+          File file = SD.open("DATALOG.TXT", FILE_WRITE);
+          if (file){
+            file.println("LAUNCH!");
+            file.close();
+          } 
+        }
 
-      if (currAlt < maxAlt - 5.0f) {
-        descent++;
-      }
+        if (currentTime - lastLogTime >= preLaunchInterval) {
+          lastLogTime = currentTime; 
+          Serial.print("station:");
+          Serial.println(currAlt);
+          Serial.println(currAccZ);
+          log_data(currAlt, currTemp, currAccZ, currentState); 
+        }
+        break;
 
-      if (descent >= 20) {
-        trigger();
-        currentState = DESCENT;
-      }
+      case ASCENT:
 
-      if (currentTime - lastLogTime >= LOG_INTERVAL) {
-        lastLogTime = currentTime;
-        Serial.print("ASCENT ");
-        log_data(currAlt);
-      }
-      break;
+        // if not descending reset counter
+        if (currAlt > maxAlt) {
+          maxAlt = currAlt;
+          counter = 0; // Reset counter
+        }
 
-    case DESCENT:
-      if (currentTime - lastLogTime >= LOG_INTERVAL) {
-        lastLogTime = currentTime;
-        Serial.print("DESCENT ");
-        log_data(currAlt);
-      }
+        // increase counter if descending
+        if (currAlt < maxAlt - 10.0 || currAccZ < -1 ) { // 10 meter buffer 
+          counter++;
+        }
 
-      if (currAlt <= 7.0f) {
-        currentState = LAND;
-      }
-      break;
+        // Trigger after 10 consistent descent readings
+        if (counter >= 10) {
+          counter = 0;
+          trigger();
+          currentState = DESCENT;
+        }
 
-    case LAND:
-      Serial.println("Landed");
-      break;
+        // timer to log data
+        if (currentTime - lastLogTime >= logInterval) {
+          lastLogTime = currentTime; 
+          Serial.print("ASCENT");
+          log_data(currAlt, currTemp, currAccZ, currentState); // This method runs exactly 5 times per second
+        }
+        break;
+
+      case DESCENT:
+        // timer to log data
+        if (currentTime - lastLogTime >= logInterval) {
+          lastLogTime = currentTime; 
+          Serial.print("DESCENT");
+          log_data(currAlt, currTemp, currAccZ, currentState); // This method runs exactly 5 times per second
+        }
+        if (currAlt <= 10) {
+          counter++;
+        }
+
+        if (counter >= 200) {
+          counter = 0;
+          currentState = LAND;
+        }
+        break;
+
+      case LAND:
+        Serial.println("Landed");
+        break;
+    }
   }
-
-  delay(20);
 }
 
-void log_data(float currAlt) {
+void log_data(float currAlt, float currTemp, float currAccZ, int state){
   File file = SD.open("DATALOG.TXT", FILE_WRITE);
-  if (file) {
-    Serial.println(currAlt);
-    file.println(currAlt);
+  if (file){
+    // write stuff into it
+    file.print(F("state: "));
+    file.print(state);
+    file.print(F(" alt: "));
+    file.print(currAlt);
+    file.print(F(" accel: "));
+    file.print(currAccZ);
+    file.print(F(" temp: "));
+    file.println(currTemp); // .println finishes the line
     file.close();
-  } else {
-    Serial.println("Error opening datalog");
+  } else{
+    Serial.println(F("Datalog error"));
   }
 }
 
 void trigger() {
-  digitalWrite(MOSFET_PIN2, HIGH);
-  Serial.println("DEPLOYMENT TRIGGERED");
+  unsigned long triggerStart = millis();
 
-  File file = SD.open("DATALOG.TXT", FILE_WRITE);
-  if (file) {
-    file.println("DEPLOYMENT TRIGGERED");
-    file.close();
+  digitalWrite(MOSFET_PIN2, HIGH); // FIRE IGNITER 2 (small chute)
+  while (millis()- triggerStart < 1500) {
+    temuReading();
   }
+  digitalWrite(MOSFET_PIN2, LOW); // stop IGNITER
+  Serial.println("DEPLOY side");
+  File file = SD.open("DATALOG.TXT", FILE_WRITE);
+    if (file){
+      file.println("DEPLOY side chute");
+      file.close();
+    } 
 
-  delay(1500);
-  digitalWrite(MOSFET_PIN2, LOW);
-  delay(500);
-  digitalWrite(MOSFET_PIN1, HIGH);
-  delay(2000);
-  digitalWrite(MOSFET_PIN1, LOW);
+  while (millis() - triggerStart < 4500) {
+    temuReading();
+  }
+  digitalWrite(MOSFET_PIN1, HIGH); // FIRE main chute
+
+  while (millis() - triggerStart < 6000) {
+    temuReading();
+  } 
+  digitalWrite(MOSFET_PIN1, LOW);  // Turn off main chute
+}
+
+void temuReading () {
+    ms5611.read();
+    IMU.readSensor();
+    xyzFloat gValue;
+    IMU.getGValues(&gValue);
+
+    float alt = ms5611.getAltitude() - groundlevel;
+    float temp = ms5611.getTemperature();
+    float accZ = gValue.z;
+    log_data(alt, temp, accZ, currentState); 
+    delay(200); // Small delay so we don't spam the SD card
 }
