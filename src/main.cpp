@@ -177,7 +177,7 @@ void loop() {
 
       case PRE_LAUNCH:
         // check if we are in the air
-        if (currAlt > 40.0 || ( currAlt > 20.0 and currAccZ > VerticalGThreshold ) || currAccZ > 5.0 ) {  // this is very subjective, there could be other better conditions
+        if (currAlt > 40.0f || ( currAlt > 20.0f and currAccZ > VerticalGThreshold ) || currAccZ > 5.0f ) {  // this is very subjective, there could be other better conditions
           counter++;
         } else {
           counter = 0;
