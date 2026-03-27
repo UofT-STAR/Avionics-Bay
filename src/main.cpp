@@ -27,7 +27,7 @@ unsigned long loopTime = 0;     // how fast to run loop (e.g. how fast to read s
 #define logInterval 200         // 200ms = 5 times per second
 #define preLaunchInterval 1000  // 1 second
 
-#define VerticalGThreshold 4.0 // Threshold for vertical acceleration to detect launch (in g's)
+#define VerticalGThreshold 4.0f // Threshold for vertical acceleration to detect launch (in g's)
 
 void setup() {
   // Open serial communications :
@@ -93,9 +93,7 @@ void setup() {
   groundlevel = (altitudeSamples[groundSamples / 2 - 1] + altitudeSamples[groundSamples / 2]) / 2.0;
 
   // Clear sample buffer once calibration is done
-  for (int i = 0; i < groundSamples; i++) {
-    altitudeSamples[i] = 0.0;
-  }
+  memset(altitudeSamples, 0, sizeof(altitudeSamples));
 
   Serial.print(F("Ground Level: "));
   Serial.println(groundlevel);
@@ -137,7 +135,7 @@ void trigger() {
   unsigned long triggerStart = millis();
 
   digitalWrite(MOSFET_PIN2, HIGH); // FIRE IGNITER 2 (small chute)
-  while (millis()- triggerStart < 1500) {
+  while (millis()- triggerStart < 1500.0f) {
     temuReading();
   }
   digitalWrite(MOSFET_PIN2, LOW); // stop IGNITER
@@ -148,12 +146,12 @@ void trigger() {
       file.close();
     }
 
-  while (millis() - triggerStart < 4500) {
+  while (millis() - triggerStart < 4500.0f) {
     temuReading();
   }
   digitalWrite(MOSFET_PIN1, HIGH); // FIRE main chute
 
-  while (millis() - triggerStart < 6000) {
+  while (millis() - triggerStart < 6000.0f) {
     temuReading();
   } 
   digitalWrite(MOSFET_PIN1, LOW);  // Turn off main chute
