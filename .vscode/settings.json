@@ -1,0 +1,14 @@
+{
+  "terminal.integrated.profiles.windows": {
+    "PowerShell (Profile)": {
+      "source": "PowerShell",
+      "args": [
+        "-NoLogo"
+      ]
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell (Profile)",
+  "terminal.integrated.env.windows": {
+    "Path": "${env:Path};C:\\Users\\ebagu\\.platformio\\penv\\Scripts"
+  }
+}
