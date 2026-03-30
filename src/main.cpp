@@ -27,7 +27,7 @@ unsigned long loopTime = 0;     // how fast to run loop (e.g. how fast to read s
 #define logInterval 200         // 200ms = 5 times per second
 #define preLaunchInterval 1000  // 1 second
 
-#define VerticalGThreshold 4.0f // Threshold for vertical acceleration to detect launch (in g's)
+#define VerticalGThreshold -4.0f // Threshold for vertical acceleration to detect launch (in g's)
 
 void setup() {
   // Open serial communications :
@@ -99,7 +99,7 @@ void setup() {
   Serial.println(groundlevel);
 }
 
-void log_data(int16_t altDm, int16_t tempCentiC, int16_t accZCentiG, uint8_t state){
+void log_data(int16_t altDm, int16_t tempCentiC, int16_t accXCentiG, uint8_t state){
   File file = SD.open("DATALOG.TXT", FILE_WRITE);
   if (file){
     // Compact CSV line: state,alt(dm),accZ(cg),temp(cC)
@@ -107,7 +107,7 @@ void log_data(int16_t altDm, int16_t tempCentiC, int16_t accZCentiG, uint8_t sta
     file.print(',');
     file.print(altDm);
     file.print(',');
-    file.print(accZCentiG);
+    file.print(accXCentiG);
     file.print(',');
     file.println(tempCentiC);
     file.close();
@@ -125,7 +125,7 @@ void temuReading() {
     log_data(
       (int16_t)((ms5611.getAltitude() - groundlevel) * 100.0f),
       (int16_t)(ms5611.getTemperature() * 100.0f),
-      (int16_t)(gValue.z * 100.0f),
+      (int16_t)(gValue.x * 100.0f),
       (uint8_t)currentState
     );
     delay(200); // Small delay so we don't spam the SD card
@@ -169,13 +169,13 @@ void loop() {
     IMU.readSensor();
     xyzFloat gValue;
     IMU.getGValues(&gValue);
-    float currAccZ = gValue.z;
+    float currAccX = gValue.x;
 
     switch (currentState) {
 
       case PRE_LAUNCH:
         // check if we are in the air
-        if (currAlt > 40.0f || ( currAlt > 20.0f and currAccZ > VerticalGThreshold ) || currAccZ > 5.0f ) {  // this is very subjective, there could be other better conditions
+        if (currAlt > 40.0f || ( currAlt > 20.0f and currAccX < VerticalGThreshold ) || currAccX < -5.0f ) {  // this is very subjective, there could be other better conditions
           counter++;
         } else {
           counter = 0;
@@ -197,11 +197,11 @@ void loop() {
           lastLogTime = currentTime; 
           Serial.print(F("station:"));
           Serial.println(currAlt);
-          Serial.println(currAccZ);
+          Serial.println(currAccX);
           log_data(
             (int16_t)(currAlt * 100.0f),
             (int16_t)(currTemp * 100.0f),
-            (int16_t)(currAccZ * 100.0f),
+            (int16_t)(currAccX * 100.0f),
             (uint8_t)currentState
           ); 
         }
@@ -216,7 +216,7 @@ void loop() {
         }
 
         // increase counter if descending
-        if (currAlt < maxAlt - 10.0 || currAccZ < -1 ) { // 10 meter buffer 
+        if (currAlt < maxAlt - 10.0f ) { // 10 meter buffer 
           counter++;
         }
 
@@ -234,7 +234,7 @@ void loop() {
           log_data(
             (int16_t)(currAlt * 100.0f),
             (int16_t)(currTemp * 100.0f),
-            (int16_t)(currAccZ * 100.0f),
+            (int16_t)(currAccX * 100.0f),
             (uint8_t)currentState
           ); // This method runs exactly 5 times per second
         }
@@ -247,8 +247,8 @@ void loop() {
           Serial.print(F("DESCENT"));
           log_data(
             (int16_t)(currAlt * 100.0f),
-            (int16_t)(currTemp * 100.0f),
-            (int16_t)(currAccZ * 100.0f),
+            (int16_t)(currTemp * 100.0f),       
+            (int16_t)(currAccX * 100.0f),
             (uint8_t)currentState
           ); // This method runs exactly 5 times per second
         }
