@@ -159,7 +159,7 @@ C:/Users/YourName/.ssh/id_ed25519.pub
 
 **Pass for this configuration check:** automatic signing is `true` and a key is configured. A GPG key ID instead of a file path can also be valid. A blank value means that setting is not configured through this Git configuration; do not assume a key is missing from the computer.
 
-**If signing is not configured:** ask Kai to help set it up using [GitHub's signing guide](https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key). Existing working SSH or GPG setups are both acceptable. Do not overwrite an existing key or share a private key. For SSH signing, GitHub must have the public key registered as a **Signing key**, not only as an Authentication key.
+**If signing is not configured:** follow [the guided signing session with Kai](docs/signing.md). You can continue the build checks while arranging the session, then finish signing before your first contribution commit. Existing working SSH or GPG setups are both acceptable. Do not overwrite an existing key or share a private key. For SSH signing, GitHub must have the public key registered as a **Signing key**, not only as an Authentication key.
 
 These settings alone do not prove that the private key is available or that signing works. The first real commit in step 10 is the end-to-end check. Desktop can have different signing behavior from your terminal, so verify the client you actually use.
 
@@ -203,36 +203,15 @@ legacy_uno     SUCCESS   00:00:06.366
 
 This builds `src/test1.cpp` only. It does not upload anything, test the sensors, or validate `src/main.cpp`. `legacy_uno` preserves the previously working configuration; the actual board and bootloader still need confirmation before a hardware session.
 
-### 10. Confirm Write access and signing with a real contribution
+### 10. Make your first reviewed contribution
 
-Do this once you have a small task agreed with Tymon:
+Agree on a small task with Tymon, then follow [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, signed commit, publishing, and PR steps. Request review from **UofT-STAR/Avionics**; the current rules require an Avionics-team approval and approval of the latest reviewable push by someone other than its pusher.
 
-1. In GitHub Desktop, create a new branch, such as `docs/clarify-setup`. A branch is where your change will live before review.
-2. Make the agreed edit. Review the **Changes** tab and select only files belonging to your task.
-3. With your signing setup ready, commit the change with a short description. A commit saves it locally; it does not publish it yet.
-4. Click **Publish branch**. **Pass:** the branch appears on GitHub. If permission is denied, check Desktop's signed-in account and ask Kai to confirm team membership.
-5. Open the commit on GitHub and look for **Verified**. **Pass:** GitHub recognizes the signature. If it is unsigned or unverified, ask Kai to help resolve signing before merging; do not disable the rule.
-6. Open a pull request targeting `main`, record what you checked, and request review.
+**Pass:** your feature branch is published, the commit shows **Verified** on GitHub, and your PR includes test evidence and an Avionics review request. A review from outside Avionics alone is not enough. Ask Kai about permissions or signing errors and Tymon about firmware review.
 
 Do not use a direct push to `main` as an access test. A successful Desktop publish verifies Desktop's authentication, not a separate terminal push configuration.
 
 **Ready:** you have the right clone, a successful build, a published feature branch, and a Verified signed commit. You can learn hardware testing in a separate supervised session.
-
-
-## First build: no hardware required
-
-1. Install Git or GitHub Desktop, Visual Studio Code, and the **PlatformIO IDE** extension in VS Code.
-2. Clone this repository and open its root folder in VS Code. The root contains `platformio.ini`; do not open only `src/`.
-3. Let PlatformIO initialize and install the platform and libraries declared in `platformio.ini`. The first build requires internet access.
-4. Open a **PlatformIO terminal** in VS Code and run:
-
-   ```sh
-   pio run -e legacy_uno
-   ```
-
-5. Confirm that the command reports success. Save the output if it fails so a teammate can help.
-
-The source filter explicitly includes only `test1.cpp`. Editing `main.cpp` will not change the default binary. Both files define `setup()` and `loop()`, so they must not simply be included together in one build.
 
 ## If PowerShell cannot find `pio`
 

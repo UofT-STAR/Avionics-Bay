@@ -1,28 +1,29 @@
 # Contributing to firmware
 
-Start with [joining and setup](docs/start-here.md) and complete a local build. Coordinate tasks and review with Tymon Cui ([@ccTymon](https://github.com/ccTymon)), the avionics lead. The existing main-branch rules require a pull request, at least one approval, approval of the latest reviewable push by someone other than its pusher, and signed commits. Confirm your signing setup before your first merge; ask Kai ([@KaiYT1](https://github.com/KaiYT1)) for help with Git, GitHub Desktop, signing, access, or PR workflow errors. The team still needs to agree on firmware-specific test requirements.
+Complete the [README setup checklist](README.md#terminal-setup-checklist) first. Coordinate avionics tasks and firmware review with Tymon Cui (@ccTymon); ask Kai (@KaiYT1) about GitHub access, signing, or workflow errors. If you need signing setup, follow [the guided session](docs/signing.md).
 
 ## Make a focused change
 
-1. In GitHub Desktop, select **Avionics-Bay** and fetch the latest changes. Update your branch when your working tree is clean.
-2. Create a branch with a descriptive name, such as `docs/setup-guide` or `fix/sensor-diagnostics`.
-3. Agree on a small task with a teammate. Good first tasks include improving a setup explanation or adding clearer diagnostics to the sensor experiment.
-4. Make the change and inspect every affected file in GitHub Desktop's **Changes** tab.
-5. Run the checks relevant to your change and record the results. See [the testing guide](docs/development.md#testing-and-evidence).
-6. Commit the intended files, publish the branch, and open a pull request for review.
+1. In GitHub Desktop, select **Avionics-Bay** and fetch changes. Update your branch when your working tree is clean.
+2. Create a descriptive feature branch, such as `docs/clarify-setup`. Do not work directly on `main`.
+3. Agree on a small task with Tymon, make the change, and inspect every affected file in **Changes**.
+4. Run the checks relevant to your change. See [development.md](docs/development.md#testing-and-evidence).
+5. Commit only the intended files using your verified signing setup. Publish the branch and confirm GitHub shows **Verified** on the commit. The [signing guide](docs/signing.md#5-make-your-first-real-signed-commit) includes a terminal path if Desktop signing is not yet working.
 
 Keep generated build files, credentials, and personal serial-port changes out of commits. Avoid mixing unrelated formatting changes with behavior changes.
 
-## Include in your pull request
+## Open a pull request and get review
 
-- What problem you addressed and how behavior changes.
-- Which source file and PlatformIO environment you actually built.
-- Commands run and their results.
-- For hardware tests: board/revision, wiring reference, setup, expected result, actual result, and relevant serial output.
-- Checks you could not perform and any remaining questions.
+1. Open a PR from your feature branch into `main`.
+2. Under **Reviewers**, request **UofT-STAR/Avionics**. GitHub may already have requested the team automatically; keep that request. If it is unavailable, ask Kai to check team access. Coordinate a suitable firmware reviewer with Tymon.
+3. Include the purpose, affected source/environment, checks performed, results, and anything you could not test. For hardware tests, include the board/revision, wiring reference, setup, and relevant observations.
+4. Ask an Avionics teammate other than the author/latest pusher to review and approve. After further pushes, ensure the latest reviewable push receives the required approval before merging.
+5. Merge only when GitHub reports the requirements are satisfied. Ask Kai about a blocked merge rather than bypassing the rules.
 
-A build of `test1.cpp` does not validate edits to `main.cpp`. State this explicitly if your change touches the excluded program. For documentation-only changes, preview the Markdown and check the paths, links, and claims against the source; hardware tests are unnecessary unless the instructions themselves are being validated.
+The current `main` rules require **signed commits**, **at least one approving review**, **an Avionics-team approval**, and **approval of the latest reviewable push by someone other than its pusher**. A single eligible Avionics reviewer can satisfy the review requirements; these do not necessarily mean two approvals. An approval from outside Avionics alone is insufficient. Force pushes and branch deletion are also blocked on `main`.
+
+A build of `test1.cpp` does not validate edits to the excluded `main.cpp`. State this if your change touches it. For documentation-only changes, preview Markdown and check links and claims against the source; hardware tests are not needed unless validating hardware instructions.
 
 ## Asking for help
 
-Include your operating system, board model, current branch or commit, command or action attempted, and the full relevant error output. Explain what you expected and what happened. Never include tokens or other credentials.
+For Git or GitHub issues, contact Kai with your operating system, branch, command/action, expected result, and relevant error. For avionics behavior or hardware, coordinate with Tymon and include the setup and observations. Never include tokens or private keys.
