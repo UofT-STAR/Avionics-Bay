@@ -15,7 +15,9 @@ void loop() {
     Serial.print("              ");
     Serial.println(myICM.accY());
 
+
     // ... add more print statements
+    Serial.println(helloworld);
   }
 
   delay(30);
